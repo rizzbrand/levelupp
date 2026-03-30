@@ -1,65 +1,99 @@
 import Image from "next/image";
 
 export default function Home() {
+  const products = [
+    {
+      name: "Afro Tee",
+      category: "Outerwear",
+      price: "GH₵600",
+      tone: "from-fuchsia-600/40 to-zinc-900",
+      stock: "Low stock",
+      image: "/assets/tee1.PNG",
+    },
+    {
+      name: "Essentially short - Green",
+      category: "Shorts",
+      price: "GH₵500",
+      tone: "from-cyan-500/40 to-zinc-900",
+      stock: "In stock",
+      image: "/assets/short1.PNG",
+    },
+    {
+      name: "See No Limits shirt",
+      category: "Shirts",
+      price: "GH₵700",
+      tone: "from-emerald-500/40 to-zinc-900",
+      stock: "In stock",
+      image: "/assets/tee2.PNG",
+    },
+    {
+      name: "Prime Leather Shorts",
+      category: "Shorts",
+      price: "GH₵700",
+      tone: "from-orange-500/40 to-zinc-900",
+      stock: "Backorder",
+      image: "/assets/short2.PNG",
+    },
+    {
+      name: "Stay Unbothered shirt",
+      category: "Tops",
+      price: "GH₵600",
+      tone: "from-violet-500/40 to-zinc-900",
+      stock: "In stock",
+      image: "/assets/tee3.PNG",
+    },
+    {
+      name: "Classic Shirt",
+      category: "Shirts",
+      price: "GH₵600",
+      tone: "from-rose-500/40 to-zinc-900",
+      stock: "Limited",
+      image: "/assets/tee4.PNG",
+    },
+  ];
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+    <div className="space-y-8">
+      <section className="overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-zinc-900 via-zinc-900 to-zinc-800 p-8">
+        <div className="space-y-3">
+          <p className="text-sm uppercase tracking-[0.2em] text-zinc-400">Wardrobe</p>
+          <h2 className="text-3xl font-semibold tracking-tight text-zinc-50">
+            Curated pieces built for modern fashion drops.
+          </h2>
+          <p className="max-w-2xl text-zinc-300">
+            Explore the LevelUp collection, monitor inventory status, and prepare each piece for
+            virtual styling and campaign production.
           </p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+      </section>
+
+      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {products.map((product, index) => (
+          <article
+            key={product.name}
+            className="group rounded-2xl border border-white/10 bg-zinc-900/70 p-4 transition hover:-translate-y-0.5 hover:border-white/20"
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+            <div className="relative mb-4 flex h-72 items-center justify-center overflow-hidden rounded-xl bg-white ring-1 ring-inset ring-zinc-200">
+              <Image
+                src={product.image}
+                alt={product.name}
+                fill
+                sizes="(max-width: 1024px) 50vw, 33vw"
+                className="object-contain p-2"
+                priority={index === 0}
+              />
+            </div>
+            <div className="space-y-2">
+              <p className="text-xs uppercase tracking-[0.16em] text-zinc-400">{product.category}</p>
+              <h3 className="text-lg font-semibold text-zinc-50">{product.name}</h3>
+              <div className="flex items-center justify-between text-sm">
+                <span className="font-medium text-zinc-100">{product.price}</span>
+                <span className="text-zinc-400">{product.stock}</span>
+              </div>
+            </div>
+          </article>
+        ))}
+      </section>
     </div>
   );
 }
