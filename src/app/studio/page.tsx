@@ -1,55 +1,45 @@
 /* eslint-disable @next/next/no-img-element */
 "use client";
 
+import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
+import { getWardrobeCategories, WARDROBE_PRODUCTS, type WardrobeProduct } from "@/lib/catalog";
 import type { StudioGenerationMode, StudioJob } from "@/lib/runway/types";
-
-const controls = [
-  { label: "Model profile", value: "Elegant, dark hair" },
-  { label: "Upload products", value: "Required" },
-  { label: "Scene", value: "White background" },
-  { label: "Format", value: "9:16" },
-];
-
-const concepts = [
-  {
-    title: "Spring Drop Reel",
-    type: "Video",
-    prompt: "15s cinematic teaser with dynamic cuts and neon textile closeups.",
-    status: "Rendering",
-  },
-  {
-    title: "Editorial Lookbook",
-    type: "Image Set",
-    prompt: "Ultra-clean monochrome campaign with metallic accents and runway mood.",
-    status: "Ready",
-  },
-  {
-    title: "Product Spotlight",
-    type: "Image + Motion",
-    prompt: "Social-first creative for Arc Cargo Trouser with urban backdrop.",
-    status: "Queued",
-  },
-];
 
 export default function StudioPage() {
   const [mode, setMode] = useState<StudioGenerationMode>("image");
-  const [prompt, setPrompt] = useState("");
-  const [sourceImageUrl, setSourceImageUrl] = useState("/assets/tee1.PNG");
+  const [categoryFilter, setCategoryFilter] = useState<string>("All");
+  const [selectedProductId, setSelectedProductId] = useState<string>(WARDROBE_PRODUCTS[0]?.id ?? "");
+  const [extraPrompt, setExtraPrompt] = useState("");
   const [jobs, setJobs] = useState<StudioJob[]>([]);
   const [activeJobId, setActiveJobId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [mockMode, setMockMode] = useState(false);
 
+  const categories = useMemo(() => ["All", ...getWardrobeCategories()], []);
+
+  const filteredProducts = useMemo(() => {
+    if (categoryFilter === "All") return WARDROBE_PRODUCTS;
+    return WARDROBE_PRODUCTS.filter((p) => p.category === categoryFilter);
+  }, [categoryFilter]);
+
+  const selectedProduct: WardrobeProduct | undefined = useMemo(
+    () => WARDROBE_PRODUCTS.find((p) => p.id === selectedProductId),
+    [selectedProductId],
+  );
+
   const activeJob = useMemo(
     () => jobs.find((job) => job.id === activeJobId) ?? null,
     [jobs, activeJobId],
   );
 
+  const previewSrc =
+    activeJob?.outputUrl || activeJob?.previewUrl || selectedProduct?.image || "";
+
   async function createGeneration() {
-    if (!prompt.trim()) {
-      setError("Please add a prompt first.");
+    if (!selectedProductId) {
+      setError("Select a product from the wardrobe.");
       return;
     }
 
@@ -61,9 +51,9 @@ export default function StudioPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          prompt: prompt.trim(),
+          productId: selectedProductId,
           mode,
-          imageUrl: sourceImageUrl || undefined,
+          extraPrompt: extraPrompt.trim() || undefined,
         }),
       });
 
@@ -94,134 +84,191 @@ export default function StudioPage() {
       const payload = (await response.json()) as { job: StudioJob; mockMode?: boolean };
       setJobs((prev) => prev.map((job) => (job.id === payload.job.id ? payload.job : job)));
       setMockMode(Boolean(payload.mockMode));
-    }, 1800);
+    }, 2000);
 
     return () => clearInterval(interval);
   }, [activeJob]);
 
   return (
-    <div className="grid gap-5 lg:grid-cols-[300px_1fr]">
+    <div className="grid gap-5 lg:grid-cols-[320px_1fr]">
       <aside className="space-y-4 rounded-3xl border border-white/10 bg-zinc-900/75 p-4">
         <div className="inline-flex rounded-full border border-white/15 bg-zinc-950 p-1 text-xs">
           <button
+            type="button"
             onClick={() => setMode("image")}
             className={`rounded-full px-3 py-1 font-medium ${
               mode === "image" ? "bg-zinc-100 text-zinc-900" : "text-zinc-400"
             }`}
           >
-            Image
+            Image ad
           </button>
           <button
+            type="button"
             onClick={() => setMode("video")}
             className={`rounded-full px-3 py-1 font-medium ${
               mode === "video" ? "bg-zinc-100 text-zinc-900" : "text-zinc-400"
             }`}
           >
-            Video
+            Video ad
           </button>
         </div>
 
         <p className="rounded-xl border border-violet-400/40 bg-violet-500/10 px-3 py-2 text-xs text-violet-200">
           {mockMode
-            ? "Runway API key not set. Studio is running in mock mode."
-            : "Runway mode connected. Generations use live API jobs."}
+            ? "Runway API key not set — mock mode. Add RUNWAY_API_KEY or RUNWAYML_API_SECRET (e.g. in src/.env or .env.local)."
+            : "Runway API connected — product ads use your catalog image as @Product."}
         </p>
 
         <div className="space-y-2">
-          {controls.map((control) => (
-            <div
-              key={control.label}
-              className="flex items-center justify-between rounded-xl border border-white/10 bg-zinc-950/80 px-3 py-3"
-            >
-              <p className="text-sm text-zinc-200">{control.label}</p>
-              <span className="text-xs text-violet-300">{control.value}</span>
-            </div>
-          ))}
+          <label className="text-xs uppercase tracking-[0.14em] text-zinc-400">Category</label>
+          <select
+            value={categoryFilter}
+            onChange={(e) => {
+              setCategoryFilter(e.target.value);
+              const next = WARDROBE_PRODUCTS.filter(
+                (p) => e.target.value === "All" || p.category === e.target.value,
+              );
+              if (next.length && !next.some((p) => p.id === selectedProductId)) {
+                setSelectedProductId(next[0].id);
+              }
+            }}
+            className="w-full rounded-lg border border-white/15 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-violet-400"
+          >
+            {categories.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
         </div>
 
-        <div className="space-y-3 rounded-xl border border-white/10 bg-zinc-950/80 p-3">
-          <label className="text-xs uppercase tracking-[0.14em] text-zinc-400">Source Image Url</label>
-          <input
-            value={sourceImageUrl}
-            onChange={(event) => setSourceImageUrl(event.target.value)}
-            className="w-full rounded-lg border border-white/15 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-violet-400"
-            placeholder="/assets/tee1.PNG"
-          />
+        <div className="space-y-2">
+          <label className="text-xs uppercase tracking-[0.14em] text-zinc-400">Product</label>
+          <div className="max-h-48 space-y-2 overflow-y-auto rounded-xl border border-white/10 bg-zinc-950/80 p-2">
+            {filteredProducts.map((product) => (
+              <button
+                key={product.id}
+                type="button"
+                onClick={() => setSelectedProductId(product.id)}
+                className={`flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left text-sm transition ${
+                  selectedProductId === product.id
+                    ? "bg-violet-600/30 ring-1 ring-violet-400/50"
+                    : "hover:bg-zinc-800"
+                }`}
+              >
+                <span className="relative h-12 w-12 shrink-0 overflow-hidden rounded-md bg-white">
+                  <Image
+                    src={product.image}
+                    alt=""
+                    fill
+                    className="object-contain p-0.5"
+                    sizes="48px"
+                  />
+                </span>
+                <span className="min-w-0">
+                  <span className="block truncate font-medium text-zinc-100">{product.name}</span>
+                  <span className="text-xs text-zinc-500">{product.category}</span>
+                </span>
+              </button>
+            ))}
+          </div>
         </div>
 
         <div className="space-y-2 rounded-xl border border-white/10 bg-zinc-950/80 p-3">
-          <label className="text-xs uppercase tracking-[0.14em] text-zinc-400">Prompt</label>
+          <label className="text-xs uppercase tracking-[0.14em] text-zinc-400">
+            Creative direction (optional)
+          </label>
           <textarea
-            value={prompt}
-            onChange={(event) => setPrompt(event.target.value)}
-            className="min-h-28 w-full rounded-lg border border-white/15 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-violet-400"
-            placeholder="Create a premium fashion campaign visual with dramatic lighting and clean editorial composition."
+            value={extraPrompt}
+            onChange={(e) => setExtraPrompt(e.target.value)}
+            className="min-h-20 w-full rounded-lg border border-white/15 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-violet-400"
+            placeholder="e.g. sunset streetwear vibe, bold headline space, neon accents…"
           />
         </div>
 
         <button
+          type="button"
           onClick={createGeneration}
           disabled={isSubmitting}
           className="w-full rounded-xl bg-violet-600 px-4 py-3 text-sm font-medium text-white hover:bg-violet-500 disabled:cursor-not-allowed disabled:bg-violet-900"
         >
-          {isSubmitting ? "Submitting..." : `Generate ${mode === "video" ? "Video" : "Image"}`}
+          {isSubmitting
+            ? "Submitting…"
+            : mode === "video"
+              ? "Generate video ad (Runway)"
+              : "Generate image ad (Runway)"}
         </button>
         {error ? <p className="text-xs text-rose-300">{error}</p> : null}
       </aside>
 
       <section className="space-y-4 rounded-3xl border border-white/10 bg-zinc-900 p-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="inline-flex items-center rounded-full border border-white/10 bg-zinc-950 px-3 py-1.5 text-sm text-zinc-300">
-            All creations
+          <div>
+            <p className="text-xs uppercase tracking-[0.16em] text-zinc-500">Preview</p>
+            <p className="text-sm text-zinc-300">
+              {selectedProduct ? (
+                <>
+                  <span className="font-medium text-zinc-100">{selectedProduct.name}</span>
+                  <span className="text-zinc-500"> · {selectedProduct.price}</span>
+                </>
+              ) : (
+                "Select a product"
+              )}
+            </p>
           </div>
-          <button className="rounded-full bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-500">
-            Generate in Bulk
-          </button>
+          {activeJob ? (
+            <span className="rounded-full border border-white/15 bg-zinc-950 px-3 py-1 text-xs text-zinc-300">
+              {activeJob.status}
+              {activeJob.productName ? ` · ${activeJob.productName}` : ""}
+            </span>
+          ) : null}
         </div>
 
-        <article className="relative mx-auto w-full max-w-4xl overflow-hidden rounded-2xl border border-white/10">
-          {activeJob?.outputUrl || activeJob?.previewUrl || sourceImageUrl ? (
+        <article className="relative mx-auto w-full max-w-3xl overflow-hidden rounded-2xl border border-white/10 bg-zinc-950">
+          {activeJob?.mode === "video" && activeJob.outputUrl ? (
+            <video
+              src={activeJob.outputUrl}
+              controls
+              playsInline
+              className="h-[400px] w-full bg-black object-contain"
+            />
+          ) : previewSrc ? (
             <img
-              src={activeJob?.outputUrl || activeJob?.previewUrl || sourceImageUrl}
-              alt="Selected product preview"
-              className="h-[440px] w-full object-contain bg-zinc-950"
+              src={previewSrc}
+              alt={selectedProduct?.name ?? "Preview"}
+              className="h-[400px] w-full bg-white object-contain"
             />
           ) : (
-            <div className="flex h-[440px] items-center justify-center bg-zinc-950 text-sm text-zinc-400">
-              Add a source product image URL to preview it here.
+            <div className="flex h-[400px] items-center justify-center text-sm text-zinc-500">
+              Choose a product to preview its cutout, then generate an ad.
             </div>
           )}
-          <div className="absolute inset-0 bg-gradient-to-t from-zinc-950/20 via-transparent to-transparent" />
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-zinc-950/15 via-transparent to-transparent" />
         </article>
 
-        <section className="grid gap-3 md:grid-cols-3">
+        <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {jobs.map((job) => (
             <button
               key={job.id}
+              type="button"
               onClick={() => setActiveJobId(job.id)}
-              className="rounded-xl border border-white/10 bg-zinc-950/80 p-4 text-left hover:border-violet-400/60"
+              className={`rounded-xl border p-4 text-left transition ${
+                activeJobId === job.id
+                  ? "border-violet-400/60 bg-violet-950/30"
+                  : "border-white/10 bg-zinc-950/80 hover:border-violet-400/40"
+              }`}
             >
-              <div className="mb-2 flex items-center justify-between">
-                <h3 className="font-medium text-zinc-100">{job.mode === "video" ? "Runway Video" : "Runway Image"}</h3>
-                <span className="rounded-full border border-white/10 px-2 py-0.5 text-xs text-zinc-300">
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <h3 className="truncate font-medium text-zinc-100">
+                  {job.productName ?? (job.mode === "video" ? "Video ad" : "Image ad")}
+                </h3>
+                <span className="shrink-0 rounded-full border border-white/10 px-2 py-0.5 text-xs text-zinc-300">
                   {job.status}
                 </span>
               </div>
-              <p className="line-clamp-2 text-sm text-zinc-300">{job.prompt}</p>
-              <p className="mt-2 text-xs text-zinc-500">{job.provider}</p>
+              <p className="line-clamp-2 text-xs text-zinc-500">{job.prompt}</p>
+              <p className="mt-2 text-xs text-zinc-600">{job.provider}</p>
             </button>
-          ))}
-          {concepts.map((concept) => (
-            <article key={concept.title} className="rounded-xl border border-white/10 bg-zinc-950/80 p-4">
-              <div className="mb-2 flex items-center justify-between">
-                <h3 className="font-medium text-zinc-100">{concept.title}</h3>
-                <span className="rounded-full border border-white/10 px-2 py-0.5 text-xs text-zinc-300">
-                  {concept.status}
-                </span>
-              </div>
-              <p className="text-sm text-zinc-400">{concept.type}</p>
-              <p className="mt-2 text-sm text-zinc-300">{concept.prompt}</p>
-            </article>
           ))}
         </section>
       </section>

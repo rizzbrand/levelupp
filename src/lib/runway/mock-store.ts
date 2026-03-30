@@ -17,8 +17,11 @@ export function createMockJob(input: CreateStudioJobInput): StudioJob {
     status: "queued",
     createdAt: now,
     updatedAt: now,
-    previewUrl: input.imageUrl,
+    previewUrl: input.imagePublicPath ?? input.imageUrl,
     provider: "mock",
+    productId: input.productId,
+    productName: input.productName,
+    productCategory: input.productCategory,
   };
 
   mockJobs.set(id, job);
