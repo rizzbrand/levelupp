@@ -69,6 +69,35 @@ export function isRunwayConfigured() {
   return Boolean(getApiKey());
 }
 
+async function fetchWithRetry(
+  input: RequestInfo | URL,
+  init: RequestInit,
+  opts: { retries: number; baseDelayMs: number } = { retries: 3, baseDelayMs: 600 },
+) {
+  let lastError: Error | null = null;
+
+  for (let attempt = 0; attempt <= opts.retries; attempt++) {
+    try {
+      const res = await fetch(input, init);
+      if (res.status >= 500 && res.status <= 599 && attempt < opts.retries) {
+        const jitter = Math.floor(Math.random() * 200);
+        const delay = opts.baseDelayMs * Math.pow(2, attempt) + jitter;
+        await new Promise((r) => setTimeout(r, delay));
+        continue;
+      }
+      return res;
+    } catch (e) {
+      lastError = e instanceof Error ? e : new Error("Network error");
+      if (attempt >= opts.retries) break;
+      const jitter = Math.floor(Math.random() * 200);
+      const delay = opts.baseDelayMs * Math.pow(2, attempt) + jitter;
+      await new Promise((r) => setTimeout(r, delay));
+    }
+  }
+
+  throw lastError ?? new Error("Request failed");
+}
+
 export async function createRunwayJob(input: CreateStudioJobInput & { imageDataUri: string }): Promise<StudioJob> {
   const now = new Date().toISOString();
 
@@ -85,7 +114,7 @@ export async function createRunwayJob(input: CreateStudioJobInput & { imageDataU
       ],
     };
 
-    const response = await fetch(`${RUNWAY_API_BASE}/v1/text_to_image`, {
+    const response = await fetchWithRetry(`${RUNWAY_API_BASE}/v1/text_to_image`, {
       method: "POST",
       headers: runwayHeaders(),
       body: JSON.stringify(body),
@@ -93,7 +122,9 @@ export async function createRunwayJob(input: CreateStudioJobInput & { imageDataU
 
     if (!response.ok) {
       const errorText = await response.text();
-      throw new Error(`Runway text_to_image failed: ${response.status} ${errorText}`);
+      throw new Error(
+        `Runway text_to_image failed: ${response.status}. This is usually temporary; please retry. Details: ${errorText}`,
+      );
     }
 
     const data = (await response.json()) as RunwayTaskCreateResponse;
@@ -126,7 +157,7 @@ export async function createRunwayJob(input: CreateStudioJobInput & { imageDataU
     duration: Number(process.env.RUNWAY_VIDEO_DURATION || 5),
   };
 
-  const response = await fetch(`${RUNWAY_API_BASE}/v1/image_to_video`, {
+  const response = await fetchWithRetry(`${RUNWAY_API_BASE}/v1/image_to_video`, {
     method: "POST",
     headers: runwayHeaders(),
     body: JSON.stringify(body),
@@ -134,7 +165,9 @@ export async function createRunwayJob(input: CreateStudioJobInput & { imageDataU
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(`Runway image_to_video failed: ${response.status} ${errorText}`);
+    throw new Error(
+      `Runway image_to_video failed: ${response.status}. This is usually temporary; please retry. Details: ${errorText}`,
+    );
   }
 
   const data = (await response.json()) as RunwayTaskCreateResponse;
@@ -160,7 +193,7 @@ export async function createRunwayJob(input: CreateStudioJobInput & { imageDataU
 }
 
 export async function getRunwayJob(jobId: string): Promise<StudioJob> {
-  const response = await fetch(`${RUNWAY_API_BASE}/v1/tasks/${jobId}`, {
+  const response = await fetchWithRetry(`${RUNWAY_API_BASE}/v1/tasks/${jobId}`, {
     method: "GET",
     headers: runwayHeaders(),
   });
